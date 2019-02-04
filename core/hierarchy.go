@@ -2,11 +2,12 @@ package core
 
 type HierarchyNode struct {
 	children []*HierarchyNode
+	name     string
 }
 
 type Hierarchy struct {
 	pathToHierarchy string
-	root *HierarchyNode
+	root            *HierarchyNode
 }
 
 func NewHierarchy(rootFolderPath string) Hierarchy {

@@ -52,7 +52,8 @@ var _ = Describe("ReadStructure", func() {
 		})
 
 		It("Check that all the folders are reached", func() {
-			core.ReadFileStructure(rootDirectory, NewOnFolderActionMock(
+			structureReader := core.NewDefaultFileStructureRead()
+			structureReader.ReadFolder(rootDirectory, NewOnFolderActionMock(
 				[]string{
 					rootDirectory,
 					subdir1,
