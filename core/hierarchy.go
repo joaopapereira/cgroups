@@ -15,6 +15,7 @@ func NewHierarchy(rootFolderPath string) Hierarchy {
 		pathToHierarchy: rootFolderPath,
 		root: &HierarchyNode{
 			children: []*HierarchyNode{},
+			name: rootFolderPath,
 		},
 	}
 }

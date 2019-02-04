@@ -10,10 +10,15 @@ type FileStructureReader interface {
 	ReadFolder(path string, onEachFolderAction OnFolderActioner)
 }
 
-func NewHierarchyLoader(reader FileStructureReader) *HierarchyLoader {
+func NewHierarchyLoader(reader FileStructureReader, shouldAdd ShouldAddToHierarchy) *HierarchyLoader {
 	return &HierarchyLoader{
 		fileStructureReader: reader,
+		addToHierarchy:      shouldAdd,
 	}
+}
+
+type ShouldAddToHierarchy interface {
+	ShouldAdd(*HierarchyNode, string, os.FileInfo) bool
 }
 
 type HierarchyLoader struct {
@@ -21,6 +26,7 @@ type HierarchyLoader struct {
 	fileStructureReader     FileStructureReader
 	hierarchyOnFolderAction OnFolderActioner
 	hierarchy               Hierarchy
+	addToHierarchy          ShouldAddToHierarchy
 }
 
 func (loader HierarchyLoader) HierarchyLoad(path string) Hierarchy {
@@ -36,6 +42,9 @@ func (loader HierarchyLoader) OnFolderAction(path string, fileInformation os.Fil
 	splitPath := strings.Split(relativePath, "/")
 	currentHierarchyNode := loader.hierarchy.root
 	for _, currentFolder := range splitPath {
+		if len(currentFolder) == 0 {
+			continue
+		}
 		foundMatch := false
 		for _, possibleMatch := range currentHierarchyNode.children {
 			if possibleMatch.name == currentFolder {
@@ -43,7 +52,8 @@ func (loader HierarchyLoader) OnFolderAction(path string, fileInformation os.Fil
 				foundMatch = true
 			}
 		}
-		if !foundMatch {
+
+		if !foundMatch && loader.addToHierarchy.ShouldAdd(currentHierarchyNode, path, fileInformation) {
 			newNode := &HierarchyNode{
 				name: currentFolder,
 			}

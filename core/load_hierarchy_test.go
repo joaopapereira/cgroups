@@ -6,14 +6,6 @@ import (
 	"os"
 )
 
-type EmptyHierarchy struct {
-	OnFolderActioner
-}
-
-func (emptyHierarchy *EmptyHierarchy) OnFolderAction(path string, fileInformation os.FileInfo, err error) error {
-	return nil
-}
-
 type FileStructureReadStub struct {
 	folderStructure []string
 }
@@ -26,6 +18,17 @@ func (reader *FileStructureReadStub) ReadFolder(path string, onEachFolderAction 
 			panic(err)
 		}
 	}
+}
+
+type ShouldAddToHierarchyStub struct {
+	ShouldAddToHierarchy
+	ShouldAddAnswers []bool
+	currentResponse  int
+}
+
+func (addToHierarchy *ShouldAddToHierarchyStub) ShouldAdd(currentParentNode *HierarchyNode, fullPath string, fileInfo os.FileInfo) bool {
+	addToHierarchy.currentResponse++
+	return addToHierarchy.ShouldAddAnswers[addToHierarchy.currentResponse-1]
 }
 
 var _ = Describe("HierarchyLoad", func() {
@@ -41,7 +44,10 @@ var _ = Describe("HierarchyLoad", func() {
 				folderStructure: []string{
 					"/some/specific/path",
 				},
-			})
+			},
+				&ShouldAddToHierarchyStub{
+					ShouldAddAnswers: []bool{true, true},
+				})
 			hierarchy := hierarchyLoad.HierarchyLoad("/some/specific/path")
 			Expect(hierarchy.pathToHierarchy).To(Equal("/some/specific/path"))
 			Expect(hierarchy.root.children).To(BeEmpty())
@@ -58,7 +64,10 @@ var _ = Describe("HierarchyLoad", func() {
 					"/some/specific/path",
 					"/some/specific/path/subdir",
 				},
-			})
+			},
+				&ShouldAddToHierarchyStub{
+					ShouldAddAnswers: []bool{true, true},
+				})
 			hierarchy = hierarchyLoad.HierarchyLoad("/some/specific/path")
 		})
 
@@ -69,9 +78,13 @@ var _ = Describe("HierarchyLoad", func() {
 		It("returns a hierarchy one child", func() {
 			Expect(hierarchy.root.children).To(Not(BeEmpty()))
 		})
+
+		It("set the full folder name for the root", func() {
+			Expect(hierarchy.root.name).To(Equal("/some/specific/path"))
+		})
 	})
 
-	Describe("When the hierarchy as a single folder with one file", func() {
+	Describe("When the hierarchy as a single folder with one file and file should not be added", func() {
 		var (
 			hierarchy Hierarchy
 		)
@@ -82,16 +95,20 @@ var _ = Describe("HierarchyLoad", func() {
 					"/some/specific/path/subdir",
 					"/some/specific/path/subdir/filename",
 				},
-			})
+			},
+				&ShouldAddToHierarchyStub{
+					ShouldAddAnswers: []bool{true, false},
+				})
 			hierarchy = hierarchyLoad.HierarchyLoad("/some/specific/path")
 		})
 
+
 		It("as the correct path to the hierarchy", func() {
-			Expect(hierarchy.pathToHierarchy).To(Equal("/some/specific/path"))
+			Expect(hierarchy.root.children[0].name).To(Equal("subdir"))
 		})
 
 		It("returns a hierarchy one child", func() {
-			Expect(hierarchy.root.children).To(Not(BeEmpty()))
+			Expect(hierarchy.root.children[0].children).To(BeEmpty())
 		})
 	})
 })
